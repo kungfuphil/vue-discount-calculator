@@ -63,6 +63,55 @@ export default defineComponent({
         const tax = ref<number>(7.5);
         const bogoDiscount = ref<number>(0);
 
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const posName = await getPositionInfo(position);
+                const taxRate = await getTaxRate(posName);
+                tax.value = taxRate;
+            })
+        }
+
+        interface Position {
+            lat: number,
+            lon: number,
+            city: string,
+            state: string,
+            country: string
+        }
+
+        async function getPositionInfo(position: GeolocationPosition): Promise<Position> {
+            let pos: Position = {
+                lat: position.coords.latitude,
+                lon: position.coords.longitude,
+                city: '',
+                state: '',
+                country: ''
+            };
+
+            const res = await fetch(`https://location-iq-service.herokuapp.com/cityinfo?lat=${pos.lat}&lon=${pos.lon}`)
+            const apiData = await res.json();
+            pos.city = apiData.city;
+            pos.state = apiData.state;
+            pos.country = apiData.country;
+
+            return pos;
+        }
+
+        async function getTaxRate(position: Position) {
+            interface CityInfo {
+                city: string,
+                state: string,
+                country: string,
+                tax: number
+            }
+
+            const res = await fetch(`https://location-iq-service.herokuapp.com/taxrate?city=${position.city}&state=${position.state}&country=${position.country}`)
+
+            const cityInfo: CityInfo = await res.json();
+
+            return cityInfo.tax;
+        }
+
         const taxRate = computed((): number => {
             return tax.value / 100;
         });
